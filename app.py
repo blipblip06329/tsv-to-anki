@@ -4,15 +4,14 @@ import io
 import csv
 import tempfile
 
-# Unique IDs for the Anki Note Model and Deck
-# If you make your own decks later, keeping these stable prevents duplication.
-MODEL_ID = 1607392320
-DECK_ID = 2059400111
+# Unique IDs for Noji import stability
+MODEL_ID = 1607392321
+DECK_ID = 2059400112
 
-# Define the Anki card layout and styles
+# Plain text model structure (Noji does not require HTML/CSS styling)
 my_model = genanki.Model(
     MODEL_ID,
-    'Pathology Quiz Model',
+    'Noji Plain Text Model',
     fields=[
         {'name': 'Front'},
         {'name': 'Back'},
@@ -23,39 +22,23 @@ my_model = genanki.Model(
             'qfmt': '{{Front}}',
             'afmt': '{{FrontSide}}<hr id="answer">{{Back}}',
         },
-    ],
-    css='''
-    .card {
-        font-family: Arial, sans-serif;
-        font-size: 18px;
-        text-align: left;
-        color: #2c3e50;
-        background-color: #ffffff;
-        padding: 25px;
-        line-height: 1.5;
-    }
-    b {
-        color: #16a085;
-    }
-    '''
+    ]
 )
 
-st.set_page_config(page_title="Anki APKG Converter", page_icon="📝")
+st.set_page_config(page_title="Noji APKG Converter", page_icon="📝")
 
-st.title("📝 TSV to Anki APKG Converter")
-st.write("Convert your Tab-Separated Values (TSV) directly into an Anki-compatible `.apkg` file.")
+st.title("📝 Noji-Compatible APKG Converter")
+st.write("This version automatically replaces HTML formatting with plain-text line breaks to look clean in **Noji**.")
 
-# Let the user set custom details
 deck_name = st.text_input("Enter your desired Deck Name:", value="Pathology Quiz Deck")
 
-# Main text input field
 tsv_data = st.text_area(
     "Paste TSV Data here (with headers like 'Front' and 'Back' on the first line):", 
     height=350, 
     placeholder="Front\tBack\nQuestion 1\tAnswer 1"
 )
 
-if st.button("Generate Anki Package"):
+if st.button("Generate Noji Package"):
     if tsv_data.strip():
         try:
             deck = genanki.Deck(DECK_ID, deck_name)
@@ -68,30 +51,31 @@ if st.button("Generate Anki Package"):
             
             card_count = 0
             for row in reader:
-                # Ensure the row actually has a front and a back
                 if len(row) >= 2:
                     front, back = row[0], row[1]
+                    
+                    # Clean up HTML tags and replace them with plain-text newlines for Noji
+                    front_clean = front.replace('<br>', '\n').replace('<b>', '').replace('</b>', '')
+                    back_clean = back.replace('<br>', '\n').replace('<b>', '').replace('</b>', '')
+                    
                     # Create Note
-                    note = genanki.Note(model=my_model, fields=[front, back])
+                    note = genanki.Note(model=my_model, fields=[front_clean, back_clean])
                     deck.add_note(note)
                     card_count += 1
             
             if card_count > 0:
                 package = genanki.Package(deck)
-                
-                # Write file temporarily on Streamlit's container
                 with tempfile.NamedTemporaryFile(suffix=".apkg", delete=False) as tmp:
                     package.write_to_file(tmp.name)
                     with open(tmp.name, "rb") as f:
                         apkg_data = f.read()
                 
-                st.success(f"Successfully compiled {card_count} flashcards!")
+                st.success(f"Successfully compiled {card_count} Noji-compatible flashcards!")
                 
-                # Download button
                 st.download_button(
-                    label="📥 Download .apkg File",
+                    label="📥 Download Noji .apkg File",
                     data=apkg_data,
-                    file_name=f"{deck_name.replace(' ', '_')}.apkg",
+                    file_name=f"{deck_name.replace(' ', '_')}_noji.apkg",
                     mime="application/octet-stream"
                 )
             else:
